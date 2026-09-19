@@ -1,22 +1,23 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
+from google.genai import types
 
 app = FastAPI()
 
-# Frontend se request allow karne ke liye CORS
+# Enable CORS for frontend connection (Local & Live)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Gemini Client setup (Render par environment variable se key uthayega)
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=GEMINI_KEY)
+# Initialize Gemini Client (using Gemini 2.5 Flash as requested)
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 class OutfitRequest(BaseModel):
     query: str
@@ -25,28 +26,32 @@ class OutfitRequest(BaseModel):
     budget: str
 
 @app.post("/generate-outfit")
-def generate_outfit(data: OutfitRequest):
-    system_instruction = (
-        "You are an elite AI fashion stylist and color-matching expert. "
-        "The user will provide their bottom wear, occasion, budget tier, and custom text prompt. "
-        "Analyze their request and return the response strictly in this exact plain text layout (do not use markdown headers like ###): "
-        "TOP: [Specific top wear name and color matching the prompt/budget]\n"
-        "SHOES: [Best matching footwear]\n"
-        "ACCESSO: [Watch, belt, or jewelry details]\n"
-        "TIP: [One short professional stylist rule for this look]"
-    )
+async def generate_outfit(req: OutfitRequest):
+    try:
+        prompt = f"""
+        You are a professional fashion stylist. A user needs an outfit recommendation.
+        - Bottom Wear: {req.bottom}
+        - Occasion/Vibe: {req.occasion}
+        - Target Budget Tier: {req.budget}
+        - User Custom Note/Preferences: {req.query}
 
-    full_prompt = (
-        f"{system_instruction}\n\n"
-        f"Bottom Wear: {data.bottom}\n"
-        f"Custom Request: {data.query}\n"
-        f"Occasion: {data.occasion}\n"
-        f"Budget Tier: {data.budget}"
-    )
+        Provide a complete styling recommendation matching the bottom wear and budget.
+        Format your response EXACTLY in these four lines, starting with these prefixes:
+        TOP: [Color and specific style of topwear, e.g., Oversized Solid Black Cotton T-Shirt]
+        SHOES: [Specific matching footwear, e.g., White Casual Sneakers]
+        ACCESSO: [Minimal matching accessories like watch, chain, or cap]
+        TIP: [A short 1-sentence styling pro-tip for this look]
+        """
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=full_prompt
-    )
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
 
-    return {"result": response.text}
+        return {"result": response.text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/")
+def home():
+    return {"message": "FitMatch AI Backend is Live!"}
