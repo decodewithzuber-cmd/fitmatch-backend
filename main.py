@@ -6,7 +6,7 @@ from google import genai
 
 app = FastAPI()
 
-# Enable CORS for all origins so frontend can talk to backend seamlessly
+# Enable CORS for all origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,7 +29,7 @@ async def generate_outfit(req: OutfitRequest):
     try:
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
-            raise HTTPException(status_code=500, detail="GEMINI_API_KEY is missing on server environment variables!")
+            raise HTTPException(status_code=500, detail="GEMINI_API_KEY is missing on Render environment variables!")
 
         prompt = f"""
         You are a professional fashion stylist. A user needs an outfit recommendation.
@@ -47,14 +47,13 @@ async def generate_outfit(req: OutfitRequest):
         """
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-2.0-flash',
             contents=prompt
         )
 
         return {"result": response.text}
     except Exception as e:
-        print(f"ERROR OCCURRED: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 def home():
