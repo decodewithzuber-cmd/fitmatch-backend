@@ -85,4 +85,4 @@ async def submit_feedback(req: FeedbackRequest):
 
 @app.get("/")
 def home():
-    return {"message": "FitMatch AI Backend is Live!"}
+    return {"message": "FitMatch Backend is Live!"}
