@@ -46,8 +46,8 @@ async def generate_outfit(req: OutfitRequest):
         TIP: [A short 1-sentence styling pro-tip for this look]
         """
 
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
+       response = client.models.generate_content(
+            model='gemini-3.6-flash',
             contents=prompt
         )
 
