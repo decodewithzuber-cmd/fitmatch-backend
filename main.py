@@ -3,11 +3,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
-from google.genai import types
 
 app = FastAPI()
 
-# Enable CORS for frontend connection (Local & Live)
+# Enable CORS for all origins so frontend can talk to backend seamlessly
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Gemini Client (using Gemini 2.5 Flash as requested)
+# Initialize Gemini Client using environment API key
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 class OutfitRequest(BaseModel):
@@ -28,6 +27,10 @@ class OutfitRequest(BaseModel):
 @app.post("/generate-outfit")
 async def generate_outfit(req: OutfitRequest):
     try:
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="GEMINI_API_KEY is missing on server environment variables!")
+
         prompt = f"""
         You are a professional fashion stylist. A user needs an outfit recommendation.
         - Bottom Wear: {req.bottom}
@@ -50,7 +53,8 @@ async def generate_outfit(req: OutfitRequest):
 
         return {"result": response.text}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"ERROR OCCURRED: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
 
 @app.get("/")
 def home():
